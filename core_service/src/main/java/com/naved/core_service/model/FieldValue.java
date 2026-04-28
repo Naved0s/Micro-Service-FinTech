@@ -12,9 +12,13 @@ public class FieldValue {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+//    @ManyToOne
+//    @JoinColumn(name = "application_form_id")
+//    ApplicationForm applicationForm;
+
     @ManyToOne
-    @JoinColumn(name = "application_form_id")
-    ApplicationForm applicationForm;
+    @JoinColumn(name = "application_id")   // ✅ CHANGE THIS
+    private Application application;
 
     @ManyToOne
     FormField formField;

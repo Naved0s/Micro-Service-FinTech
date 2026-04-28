@@ -13,4 +13,5 @@ public class workflowDTO {
    private Integer priority;
     String condition ;
     String actions;
+    String description;
 }

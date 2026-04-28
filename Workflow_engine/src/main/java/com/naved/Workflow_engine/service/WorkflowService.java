@@ -62,6 +62,13 @@ public class WorkflowService {
         return workflowRepo.findByname(name).stream().findFirst().get();
     }
 
+    public void deleteById(int id ){
+       workflowRepo.deleteById(id);
+    }
+    public void deleteJflowById(int id ){
+         flowModelRepo.deleteById(id);
+    }
+
     public List<WorkflowModel> getAll(){
         return workflowRepo.findAll();
     }
@@ -111,13 +118,20 @@ public class WorkflowService {
         if (dto.getCondition() != null) {
             wf.setCondition(dto.getCondition());
         }
+        if (dto.getDescription() != null) {
+            wf.setDescription(dto.getDescription());
+        }
       workflowRepo.save(wf);
     }
    public void saveFlow(String json){
         ObjectMapper mp = new ObjectMapper();
         JsonNode js = mp.readTree(json);
-        FlowModel f = new FlowModel();
-        f.setFlowName(js.get("Name").asText());
+       JsonNode hyperNode = js.get("hypermodel");
+       String hyperStr = hyperNode.asText();
+       JsonNode hyperJson = mp.readTree(hyperStr);
+
+       FlowModel f = new FlowModel();
+        f.setFlowName(hyperJson.get("Name").asText());
         f.setFlowJson(json);
         flowModelRepo.save(f);
 
@@ -195,7 +209,9 @@ public class WorkflowService {
 
         ObjectMapper mp = new ObjectMapper();
         JsonNode js = mp.readTree(json);
-        JsonNode steps = js.get("Steps");
+        String hypermodelStr = js.get("hypermodel").asText();
+        JsonNode hypermodelJson = mp.readTree(hypermodelStr);
+        JsonNode steps = hypermodelJson.get("Steps");
 //        System.out.println("THis are the steps"+ steps);
         for(JsonNode j : steps){
             if(j.get("type").asText().equals("Sequential")){
@@ -262,7 +278,156 @@ public class WorkflowService {
 
     }
 
+    public Map<String,Object> executeWithDataId(int id , Map<String,Object> data){
+        FlowModel flow = flowModelRepo.findById(id).get();
+        return  executeJFlowsWithData(flow.getFlowJson(),data);
+    }
 
+//    public Map<String, Object> executeJFlowsWithData(String json, Map<String, Object> inputData) {
+//
+//        // 1. Thread-safe context initialized with the incoming form data
+//        WorkflowContext localCtx = new WorkflowContext();
+////        System.out.println("This is the input data fed to the workflow "+ inputData);
+//
+//
+//        if (inputData != null) {
+//            for (Map.Entry<String, Object> entry : inputData.entrySet()) {
+////                System.out.println("THis is entry key "+ entry.getKey() + "With value:"+entry.getValue());
+//                localCtx.put(entry.getKey(), entry.getValue());
+//            }
+//        }
+//        WorkContext workContext = new WorkContext();
+//        Facts facts = new Facts();
+//        LogCollectors lg = new LogCollectors();
+//        System.out.println("THis is localCtx"+ localCtx.getAll());
+//        // 2. Put our initialized context into JeasyFlow facts
+//        facts.put("ctx", localCtx);
+//        facts.put("log", lg);
+//        workContext.put("Facts", facts);
+//        ObjectMapper mp = new ObjectMapper();
+//        try {
+//            JsonNode js = mp.readTree(json);
+//            JsonNode steps = js.get("Steps");
+//
+//            for(JsonNode j : steps){
+//                if(j.get("type").asText().equals("Sequential")){
+//                    triggerSequential(j, workContext, lg);
+//
+//                } else if (j.get("type").asText().equals("Conditional")) {
+//
+//                    Map<String,Object> vars = new HashMap<>();
+//                    vars.put("ctx", localCtx); // Inject our prepopulated ctx for Condition evaluation
+//
+//                    boolean result = (Boolean) org.mvel2.MVEL.eval(j.get("condition").asText(), vars);
+//                    logger.info("Condition evaluated to: " + result);
+//
+//                    if(result){
+//                        triggerSequential(j.get("trueStep"), workContext, lg);
+//                    }else{
+//                        triggerSequential(j.get("falseStep"), workContext, lg);
+//                    }
+//                }
+//            }
+//        } catch (Exception e) {
+//            logger.error("Error executing jeasy flow", e);
+//        }
+//
+//        // 3. Return the modified payload back to the core_service!
+//        return localCtx.getAll();
+//    }
+
+public Map<String, Object> executeJFlowsWithData(String json, Map<String, Object> inputData) {
+
+    // 1. Thread-safe context initialized with the incoming form data
+    WorkflowContext localCtx = new WorkflowContext();
+
+    if (inputData != null) {
+        for (Map.Entry<String, Object> entry : inputData.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+
+            if ("fields".equals(key) && value instanceof java.util.List) {
+                // ⭐️ FLATTEN THE FIELDS ARRAY
+                java.util.List<?> fieldsList = (java.util.List<?>) value;
+                for (Object fieldObj : fieldsList) {
+                    if (fieldObj instanceof java.util.Map) {
+                        java.util.Map<?, ?> fieldMap = (java.util.Map<?, ?>) fieldObj;
+                        Object fieldName = fieldMap.get("fieldName");
+                        Object fieldValue = fieldMap.get("value");
+
+                        if (fieldName != null) {
+                            localCtx.put(fieldName.toString(), fieldValue);
+                        }
+                    }
+                }
+            }
+            else if ("entity".equals(key) && value instanceof java.util.Map) {
+                // ⭐️ FLATTEN THE ENTITY DETAILS
+                java.util.Map<?, ?> entityMap = (java.util.Map<?, ?>) value;
+                for (Map.Entry<?, ?> entityEntry : entityMap.entrySet()) {
+                    localCtx.put(entityEntry.getKey().toString(), entityEntry.getValue());
+                }
+            }
+            else {
+                // Catch everything else at the top level
+                localCtx.put(key, value);
+            }
+        }
+    }
+
+    WorkContext workContext = new WorkContext();
+    Facts facts = new Facts();
+    LogCollectors lg = new LogCollectors();
+    //System.out.println("This is the beautifully flattened localCtx: " + localCtx.getAll());
+
+    // 2. Put our initialized context into JeasyFlow facts
+    facts.put("ctx", localCtx);
+    facts.put("log", lg);
+    workContext.put("Facts", facts);
+    ObjectMapper mp = new ObjectMapper();
+
+    try {
+        JsonNode root = mp.readTree(json);
+        String hypermodelStr = root.get("hypermodel").asText();
+        JsonNode hypermodelNode = mp.readTree(hypermodelStr);
+
+
+        JsonNode steps = hypermodelNode.get("Steps");
+        System.out.println("This are the steps:"+steps);
+        for(JsonNode j : steps){
+            if(j.get("type").asText().equals("Sequential")){
+                triggerSequential(j, workContext, lg);
+
+            } else if (j.get("type").asText().equals("Conditional")) {
+
+                Map<String,Object> vars = new HashMap<>();
+                vars.put("ctx", localCtx); // Inject our prepopulated ctx for Condition evaluation
+
+                boolean result = (Boolean) org.mvel2.MVEL.eval(j.get("condition").asText(), vars);
+                logger.info("Condition evaluated to: " + result);
+
+                if(result){
+                    triggerSequential(j.get("trueStep"), workContext, lg);
+                }else{
+                    triggerSequential(j.get("falseStep"), workContext, lg);
+                }
+            }
+        }
+    } catch (Exception e) {
+        logger.error("Error executing jeasy flow", e);
+    }
+
+    // 3. Return the modified payload back to the core_service!
+    return localCtx.getAll();
+}
+
+public List<FlowModel> getAllJFlows(){
+    return flowModelRepo.findAll();
+}
+
+
+
+    //===========================
 
 //    public void sample(){
 //        MVELRule ageRule = new MVELRule()

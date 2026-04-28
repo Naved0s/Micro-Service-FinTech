@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+@CrossOrigin(origins = "*")
 @RestController
 public class WorkflowController {
 
@@ -17,8 +18,20 @@ public class WorkflowController {
     WorkflowService workflowService;
 
         @GetMapping("/{id}")
-        void getWorkflowById(@PathVariable int id ){
+        WorkflowModel getWorkflowById(@PathVariable int id ){
             System.out.println( workflowService.getWorkflowById(id));
+            return workflowService.getWorkflowById(id);
+        }
+        @DeleteMapping("/delete/{id}")
+        String deleteById(@PathVariable int id ){
+            workflowService.deleteById(id);
+            return "Deleted the workflow"+id;
+        }
+
+        @DeleteMapping("/jflow/delete/{id}")
+        String deleteJflowById(@PathVariable  int id){
+            workflowService.deleteJflowById(id);
+            return "Deleted the Jflow with Id:"+id;
         }
 
         @PostMapping("/save")
@@ -48,7 +61,7 @@ public class WorkflowController {
         }
 
         @PostMapping("/flow/save")
-        void saveFlow(@RequestBody String json){
+        void saveFlow(@RequestBody String json) throws Exception {
             workflowService.saveFlow(json);
         }
 
@@ -71,6 +84,22 @@ public class WorkflowController {
         @PatchMapping("/flow/update/{id}")
         void updateJflowById(@PathVariable int id , @RequestBody String json){
             workflowService.updateJflowById(id,json);
-
         }
+
+        //get all JFlows
+    @GetMapping("/jflows/all")
+        List<FlowModel> getAllJFlows(){
+            return workflowService.getAllJFlows();
+        }
+
+
+
+    @PostMapping("/executeFlowWithData/{id}")
+    public Map<String, Object> executeFlowWithData(@PathVariable int id, @RequestBody Map<String, Object> incomingFormData) {
+        return workflowService.executeWithDataId(id, incomingFormData);
+    }
+
+
+
+
 }

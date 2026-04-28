@@ -1,6 +1,11 @@
 spring:
   application:
-    name: Workflow_engine
+    name: Workflow-engine
+
+  boot:
+    admin:
+      client:
+        url: http://localhost:1111/
 
   datasource:
     url: jdbc:postgresql://localhost:5432/postgres
@@ -18,3 +23,16 @@ logging:
     root: INFO
   file:
     name: logs/workflow.log
+
+#
+server:
+  port: 9093
+
+
+
+#Actuators
+management:
+  endpoints:
+    web:
+      exposers:
+        include: '*'

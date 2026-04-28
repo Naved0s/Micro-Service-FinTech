@@ -24,6 +24,11 @@ repositories {
 	mavenCentral()
 }
 
+ext {
+	set('springBootAdminVersion', "4.0.2")
+	set('springCloudVersion', "2025.1.0")
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
@@ -32,6 +37,13 @@ dependencies {
 	implementation 'org.postgresql:postgresql:42.7.4'
 	// Source: https://mvnrepository.com/artifact/org.jeasy/easy-flows
 	implementation("org.jeasy:easy-flows:0.3")
+	implementation("org.springframework.boot:spring-boot-devtools:4.0.2")
+	implementation 'org.springframework.boot:spring-boot-micrometer-tracing-brave'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-zipkin'
+	implementation 'de.codecentric:spring-boot-admin-starter-client'
+	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -40,6 +52,12 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+dependencyManagement {
+	imports {
+		mavenBom "de.codecentric:spring-boot-admin-dependencies:${springBootAdminVersion}"
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
 tasks.named('test') {
 	useJUnitPlatform()
 }

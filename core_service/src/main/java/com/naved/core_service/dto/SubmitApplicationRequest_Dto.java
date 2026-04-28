@@ -12,5 +12,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SubmitApplicationRequest_Dto {
+    private Application_dto applicationDto;
     private List<FieldValueRequest_Dto> fieldValues;
 }
